@@ -4,8 +4,10 @@ pragma solidity ^0.8.0;
 import {LibDiamond} from "./LibDiamond.sol";
 
 struct Dathlete {
+    string name;
     address owner;
     bool locked;
+    string cid;
 }
 
 struct ChallengeType {
@@ -29,10 +31,14 @@ struct AppStorage {
     mapping(address => mapping(uint256 => uint256)) ownerTokenIdIndexes;
     uint32[] tokenIds;
     mapping(uint256 => uint256) tokenIdIndexes;
+    mapping(address => mapping(address => bool)) operators;
     mapping(uint256 => address) approved;
     uint32 tokenIdCounter;
     string challengesBaseUri;
     bytes32 domainSeparator;
+    string name;
+    string symbol;
+    mapping(address => bool) challengeManagers;
 }
 
 library LibAppStorage {
@@ -45,4 +51,31 @@ library LibAppStorage {
 
 contract Modifiers {
     AppStorage internal s;
+    modifier onlyDathleteOwner(uint256 _tokenId) {
+        require(msg.sender == s.dathletes[_tokenId].owner, "LibAppStorage: Only dathlete owner can call this function");
+        _;
+    }
+    modifier onlyUnlocked(uint256 _tokenId) {
+        require(s.dathletes[_tokenId].locked == false, "LibAppStorage: Only callable on unlocked Dathlete");
+        _;
+    }
+
+    modifier onlyOwner() {
+        LibDiamond.enforceIsContractOwner();
+        _;
+    }
+
+    modifier onlyChallengeManager() {
+        address sender = msg.sender;
+        require(s.challengeManagers[sender] == true, "LibAppStorage: only an ChallengeManager can call this function");
+        _;
+    }
+    modifier onlyOwnerOrChallengeManager() {
+        address sender = msg.sender;
+        require(
+            sender == LibDiamond.contractOwner() || s.challengeManagers[sender] == true,
+            "LibAppStorage: only an Owner or ChallengeManager can call this function"
+        );
+        _;
+    }
 }

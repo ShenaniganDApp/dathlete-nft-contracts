@@ -3,8 +3,28 @@ pragma solidity ^0.8.0;
 
 import {LibAppStorage, AppStorage, ChallengeType} from "./LibAppStorage.sol";
 import {LibERC721} from "../libraries/LibERC721.sol";
+import {LibChallenges, ChallengeTypeIO} from "../libraries/LibChallenges.sol";
+
+struct DathleteInfo {
+    uint256 tokenId;
+    string name;
+    address owner;
+    bool locked;
+    string cid;
+    ChallengeTypeIO[] challenges;
+}
 
 library LibDathlete {
+    function getDathlete(uint256 _tokenId) internal view returns (DathleteInfo memory dathleteInfo_) {
+        AppStorage storage s = LibAppStorage.diamondStorage();
+        dathleteInfo_.tokenId = _tokenId;
+        dathleteInfo_.owner = s.dathletes[_tokenId].owner;
+        dathleteInfo_.cid = s.dathletes[_tokenId].cid;
+        dathleteInfo_.name = s.dathletes[_tokenId].name;
+        dathleteInfo_.locked = s.dathletes[_tokenId].locked;
+        dathleteInfo_.challenges = LibChallenges.challengeBalancesOfTokenWithTypes(address(this), _tokenId);
+    }
+
     function transfer(
         address _from,
         address _to,
