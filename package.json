@@ -1,32 +1,59 @@
 {
-  "name": "contracts-starter",
-  "version": "1.0.0",
-  "description": "Template for contract projects.",
+  "name": "dathlete-nft-contracts",
+  "version": "0.0.1",
+  "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prettier": "prettier --write contracts/**/*.sol",
+    "solhint": "solhint 'contracts/**/*.sol'",
+    "chain": "hardhat node",
+    "fork": "hardhat node --fork https://rpc.xdaichain.com/"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mudgen/contracts-starter.git"
+    "url": "git+https://github.com/aavegotchi/dathlete-nft-contracts.git"
   },
-  "author": "Nick Mudge",
+  "author": "Victor Ginelli",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mudgen/contracts-starter/issues"
+    "url": "https://github.com/aavegotchi/dathlete-nft-contracts/issues"
   },
-  "homepage": "https://github.com/mudgen/contracts-starter#readme",
+  "homepage": "https://github.com/aavegotchi/dathlete-nft-contracts#readme",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
-    "@solidstate/contracts": "^0.0.27",
+    "@typechain/ethers-v5": "^7.1.2",
+    "@typechain/hardhat": "^2.3.0",
+    "@types/chai": "^4.2.22",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^16.9.6",
     "chai": "^4.3.4",
-    "dotenv": "^8.6.0",
-    "ethereum-waffle": "^3.4.0",
-    "ethers": "^5.4.1",
-    "hardhat": "^2.4.1",
-    "prettier": "^2.3.2",
-    "prettier-plugin-solidity": "^1.0.0-beta.13",
-    "standard": "^16.0.3"
+    "diamond-util": "^1.1.1",
+    "dotenv": "^8.2.0",
+    "ethereum-waffle": "^3.3.0",
+    "ethers": "^5.4.7",
+    "hardhat-contract-sizer": "^2.0.3",
+    "hardhat-docgen": "^1.1.2",
+    "husky": "^4.3.8",
+    "prettier": "^2.2.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.7",
+    "solidity-coverage": "^0.7.16",
+    "standard": "^14.3.4",
+    "truffle-assertions": "^0.9.2",
+    "ts-node": "^10.2.1",
+    "typechain": "^5.1.2",
+    "typescript": "^4.4.3"
+  },
+  "dependencies": {
+    "@ethersproject/experimental": "^5.4.0",
+    "@ethersproject/hardware-wallets": "https://github.com/mudgen/ethers-ledger.git",
+    "@types/chai": "^4.2.21",
+    "@types/mocha": "^9.0.0",
+    "axios": "^0.21.1",
+    "graphql-request": "^3.5.0",
+    "hardhat": "^2.2.1",
+    "node-hid": "^2.1.1",
+    "solc": "^0.8.7-fixed"
   }
 }

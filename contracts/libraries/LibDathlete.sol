@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IERC20} from "../interfaces/IERC20.sol";
+import {LibERC20} from "../libraries/LibERC20.sol";
 import {LibAppStorage, AppStorage, ChallengeType} from "./LibAppStorage.sol";
 import {LibERC721} from "../libraries/LibERC721.sol";
 import {LibChallenges, ChallengeTypeIO} from "../libraries/LibChallenges.sol";
 
 struct DathleteInfo {
     uint256 tokenId;
-    string name;
     address owner;
     bool locked;
-    string cid;
+    uint32 seasonId;
     ChallengeTypeIO[] challenges;
 }
 
@@ -19,10 +20,23 @@ library LibDathlete {
         AppStorage storage s = LibAppStorage.diamondStorage();
         dathleteInfo_.tokenId = _tokenId;
         dathleteInfo_.owner = s.dathletes[_tokenId].owner;
-        dathleteInfo_.cid = s.dathletes[_tokenId].cid;
-        dathleteInfo_.name = s.dathletes[_tokenId].name;
         dathleteInfo_.locked = s.dathletes[_tokenId].locked;
         dathleteInfo_.challenges = LibChallenges.challengeBalancesOfTokenWithTypes(address(this), _tokenId);
+    }
+
+    // Need to ensure there is no overflow of _prtcle
+    function purchase(address _from, uint256 _prtcle) internal {
+        AppStorage storage s = LibAppStorage.diamondStorage();
+        //33% to burn address
+        uint256 burnShare = (_prtcle * 33) / 100;
+
+        //10% to DAO
+        uint256 daoShare = (_prtcle - burnShare);
+
+        address prtcleContract = s.prtcleContract;
+        LibERC20.transferFrom(prtcleContract, _from, address(0), burnShare);
+        
+        LibERC20.transferFrom(prtcleContract, _from, s.dao, daoShare);
     }
 
     function transfer(

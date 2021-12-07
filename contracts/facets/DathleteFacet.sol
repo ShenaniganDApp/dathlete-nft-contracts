@@ -237,7 +237,7 @@ contract DathleteFacet {
     /// @notice An abbreviated name for NFTs in this contract
 
     function symbol() external view returns (string memory) {
-        //return "DATHL";
+        //return "dATH";
         return s.symbol;
     }
 
@@ -247,7 +247,9 @@ contract DathleteFacet {
     ///  Metadata JSON Schema".
     function tokenURI(uint256 _tokenId) external view returns (string memory) {
         DathleteInfo memory dathleteInfo = LibDathlete.getDathlete(_tokenId);
-        string memory url = LibStrings.concatenate("https://gateway.pinata.cloud/ipfs/", dathleteInfo.cid);
-        return url; //Here is your URL!
+
+        string memory hexstringtokenID = LibStrings.uint2hexstr(dathleteInfo.tokenId);
+
+        return string(abi.encodePacked("ipfs://f0", hexstringtokenID));
     }
 }

@@ -35,7 +35,26 @@ library LibStrings {
         return string(abi.encodePacked(_str, buffer));
     }
 
-    function concatenate(string calldata a, string calldata b) external pure returns (string memory) {
+    function concatenate(string memory a, string memory b) internal pure returns (string memory) {
         return string(abi.encodePacked(a, b));
+    }
+
+    function uint2hexstr(uint256 i) internal pure returns (string memory) {
+        if (i == 0) return "0";
+        uint256 j = i;
+        uint256 length;
+        while (j != 0) {
+            length++;
+            j = j >> 4;
+        }
+        uint256 mask = 15;
+        bytes memory bstr = new bytes(length);
+        uint256 k = length;
+        while (i != 0) {
+            uint256 curr = (i & mask);
+            bstr[--k] = curr > 9 ? bytes1(uint8(55 + curr)) : bytes1(uint8(48 + curr)); // 55 = 65 - 10
+            i = i >> 4;
+        }
+        return string(bstr);
     }
 }

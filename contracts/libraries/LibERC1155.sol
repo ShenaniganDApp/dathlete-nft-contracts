@@ -42,7 +42,7 @@ library LibERC1155 {
         URIs are defined in RFC 3986.
         The URI MUST point to a JSON file that conforms to the "ERC-1155 Metadata URI JSON Schema".
     */
-    event URI(string _value, uint256 indexed _id);
+    event URI(string _value, string _id);
 
     function onERC1155Received(
         address _operator,

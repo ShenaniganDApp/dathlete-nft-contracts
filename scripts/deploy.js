@@ -1,79 +1,238 @@
-/* global ethers */
-/* eslint prefer-const: "off" */
+/* global ethers hre */
 
-const { getSelectors, FacetCutAction } = require('./libraries/diamond.js')
+const diamond = require('../js/diamond-util/src/index.js')
+// const deployToken= require('../scripts/deployTesttoken.js')
 
-async function deployDiamond () {
+function addCommas (nStr) {
+  nStr += ''
+  const x = nStr.split('.')
+  let x1 = x[0]
+  const x2 = x.length > 1 ? '.' + x[1] : ''
+  var rgx = /(\d+)(\d{3})/
+  while (rgx.test(x1)) {
+    x1 = x1.replace(rgx, '$1' + ',' + '$2')
+  }
+  return x1 + x2
+}
+
+function strDisplay (str) {
+  return addCommas(str.toString())
+}
+
+async function main (scriptName) {
+  console.log('SCRIPT NAME:', scriptName)
+
   const accounts = await ethers.getSigners()
-  const contractOwner = accounts[0]
+  const account = await accounts[0].getAddress()
+  const secondAccount= await accounts[1].getAddress()
+  console.log('Account: ' + account)
+  console.log('---')
+  let tx
+  let totalGasUsed = ethers.BigNumber.from('0')
+  let receipt
+  let initialSeasonSize
+  let prtcleTokenContract
+  let dao
+  let daoTreasury
+  let challengeManagers
+  const gasLimit = 12300000
 
-  // deploy DiamondCutFacet
-  const DiamondCutFacet = await ethers.getContractFactory('DiamondCutFacet')
-  const diamondCutFacet = await DiamondCutFacet.deploy()
-  await diamondCutFacet.deployed()
-  console.log('DiamondCutFacet deployed:', diamondCutFacet.address)
 
-  // deploy Diamond
-  const Diamond = await ethers.getContractFactory('Diamond')
-  const diamond = await Diamond.deploy(contractOwner.address, diamondCutFacet.address)
-  await diamond.deployed()
-  console.log('Diamond deployed:', diamond.address)
+  const dathletePrice = ethers.utils.parseEther('100')
+  const name = 'Dathlete'
+  const symbol = 'DATH'
+  if (hre.network.name === 'localhost') {
+    dao = account // 'todo' // await accounts[1].getAddress()
+    daoTreasury = account
+    challengeManagers = [account] // 'todo'
+    initialSeasonSize = '100'
+  
 
-  // deploy DiamondInit
-  // DiamondInit provides a function that is called when the diamond is upgraded to initialize state variables
-  // Read about how the diamondCut function works here: https://eips.ethereum.org/EIPS/eip-2535#addingreplacingremoving-functions
-  const DiamondInit = await ethers.getContractFactory('DiamondInit')
-  const diamondInit = await DiamondInit.deploy()
-  await diamondInit.deployed()
-  console.log('DiamondInit deployed:', diamondInit.address)
+    // prtcleTokenContract = set below
+    dao = await accounts[1].getAddress()
+    daoTreasury = await accounts[1].getAddress()
+    challengeManagers = [account] // 'todo'
+  } else if (hre.network.name === 'xdai') {
+    initialSeasonSize = '1000'
 
-  // deploy facets
-  console.log('')
-  console.log('Deploying facets')
-  const FacetNames = [
-    'DiamondLoupeFacet',
-    'OwnershipFacet'
-  ]
-  const cut = []
-  for (const FacetName of FacetNames) {
-    const Facet = await ethers.getContractFactory(FacetName)
-    const facet = await Facet.deploy()
-    await facet.deployed()
-    console.log(`${FacetName} deployed: ${facet.address}`)
-    cut.push({
-      facetAddress: facet.address,
-      action: FacetCutAction.Add,
-      functionSelectors: getSelectors(facet)
-    })
+    // XDai prtcle token address
+    prtcleTokenContract = await ethers.getContractAt('Particle', '0xeDaA788Ee96a0749a2De48738f5dF0AA88E99ab5')
+
+    dao = 'todo' // await accounts[1].getAddress()
+    daoTreasury = 'todo'
+    rarityFarming = 'todo' // await accounts[2].getAddress()
+    pixelCraft = 'todo' // await accounts[3].getAddress()
+  } else if (hre.network.name === 'kovan') {
+    initialSeasonSize = '10000'
+
+    prtcleTokenContract = await ethers.getContractAt('Particle', '0xeDaA788Ee96a0749a2De48738f5dF0AA88E99ab5')
+    // console.log('PRTCLE diamond address:' + prtcleDiamond.address)
+
+    dao = account // 'todo' // await accounts[1].getAddress()
+    daoTreasury = account
+    challengeManagers = [account] // 'todo'
+    mintAddress = account // 'todo'
+  
+  } else {
+    throw Error('No network settings for ' + hre.network.name)
   }
 
-  // upgrade diamond with facets
-  console.log('')
-  console.log('Diamond Cut:', cut)
-  const diamondCut = await ethers.getContractAt('IDiamondCut', diamond.address)
-  let tx
-  let receipt
-  // call to init function
-  let functionCall = diamondInit.interface.encodeFunctionData('init')
-  tx = await diamondCut.diamondCut(cut, diamondInit.address, functionCall)
-  console.log('Diamond cut tx: ', tx.hash)
+  async function deployFacets (...facets) {
+    const instances = []
+    for (let facet of facets) {
+      let constructorArgs = []
+      if (Array.isArray(facet)) {
+        ;[facet, constructorArgs] = facet
+      }
+      const factory = await ethers.getContractFactory(facet)
+      const facetInstance = await factory.deploy(...constructorArgs)
+      await facetInstance.deployed()
+      const tx = facetInstance.deployTransaction
+      const receipt = await tx.wait()
+      console.log(`${facet} deploy gas used:` + strDisplay(receipt.gasUsed))
+      totalGasUsed = totalGasUsed.add(receipt.gasUsed)
+      instances.push(facetInstance)
+    }
+    return instances
+  }
+  let [
+    dathleteFacet,
+    challengesFacet,
+    challengesTransferFacet,
+    daoFacet,
+    shopFacet,
+  ] = await deployFacets(
+    'DathleteFacet',
+    'ChallengesFacet',
+    'ChallengesTransferFacet',
+    'DAOFacet',
+    'ShopFacet',
+  )
+  if (hre.network.name === 'localhost') {
+    const Prtcle = await ethers.getContractFactory("Particle");
+    prtcleTokenContract = await Prtcle.deploy(account);
+  
+    prtcleTokenContract = await ethers.getContractAt('Particle', prtcleTokenContract.address)
+    console.log('PRTCLE address:' + prtcleTokenContract.address)
+  }
+
+  // eslint-disable-next-line no-unused-vars
+  const dathleteDiamond = await diamond.deploy({
+    diamondName: 'Diamond',
+    initDiamond: 'contracts/upgradeInitializers/DiamondInit.sol:DiamondInit',
+    facets: [
+      ['DathleteFacet', dathleteFacet],
+      ['ChallengesFacet', challengesFacet],
+      ['ChallengesTransferFacet', challengesTransferFacet],
+      ['DAOFacet', daoFacet],
+      ['ShopFacet', shopFacet],
+    ],
+    owner: account,
+    args: [[dao, daoTreasury, prtcleTokenContract.address, name, symbol]]
+  })
+  console.log('Dathlete diamond address:' + dathleteDiamond.address)
+
+  tx = dathleteDiamond.deployTransaction
+  receipt = await tx.wait()
+  console.log('Dathlete diamond deploy gas used:' + strDisplay(receipt.gasUsed))
+  totalGasUsed = totalGasUsed.add(receipt.gasUsed)
+
+  // create first season
+  daoFacet = await ethers.getContractAt('DAOFacet', dathleteDiamond.address)
+  tx = await daoFacet.createSeason(initialSeasonSize, dathletePrice)
+  receipt = await tx.wait()
+  console.log('Season created:' + strDisplay(receipt.gasUsed))
+  totalGasUsed = totalGasUsed.add(receipt.gasUsed)
+
+  receipt = await tx.wait()
+  console.log('Dathlete diamond deploy gas used:' + strDisplay(receipt.gasUsed))
+  totalGasUsed = totalGasUsed.add(receipt.gasUsed)
+
+  const diamondLoupeFacet = await ethers.getContractAt('DiamondLoupeFacet', dathleteDiamond.address)
+  dathleteFacet = await ethers.getContractAt('DathleteFacet', dathleteDiamond.address)
+  shopFacet = await ethers.getContractAt('ShopFacet', dathleteDiamond.address)
+
+  
+  if (hre.network.name === 'localhost') {
+  console.log('Adding challenge managers')
+  tx = await daoFacet.addChallengeManagers(challengeManagers)
+  console.log('Adding challenge managers tx:', tx.hash)
   receipt = await tx.wait()
   if (!receipt.status) {
-    throw Error(`Diamond upgrade failed: ${tx.hash}`)
+    throw Error(`Adding challenge manager failed: ${tx.hash}`)
   }
-  console.log('Completed diamond cut')
-  return diamond.address
-}
+  
+  console.log('Adding Challenge managers gas used::' + strDisplay(receipt.gasUsed))
+  totalGasUsed = totalGasUsed.add(receipt.gasUsed)
+
+  console.log('Adding Challenge Types')
+  challengesFacet = await ethers.getContractAt('ChallengesFacet', dathleteDiamond.address)
+  challengesTransferFacet = await ethers.getContractAt('ChallengesTransferFacet', dathleteDiamond.address)
+
+  const { challengeTypes } = require('./testChallengeTypes.js')
+
+  tx = await daoFacet.addChallengeTypes(challengeTypes.slice(0, challengeTypes.length / 4), { gasLimit: gasLimit })
+  
+  receipt = await tx.wait()
+  if (!receipt.status) {
+    throw Error(`Error:: ${tx.hash}`)
+  }
+  console.log('Adding Challenge Types (1 / 4) gas used::' + strDisplay(receipt.gasUsed))
+  totalGasUsed = totalGasUsed.add(receipt.gasUsed)
+
+  tx = await daoFacet.addChallengeTypes(challengeTypes.slice(challengeTypes.length / 4, (challengeTypes.length / 4) * 2), { gasLimit: gasLimit })
+  receipt = await tx.wait()
+  if (!receipt.status) {
+    throw Error(`Error:: ${tx.hash}`)
+  }
+  console.log('Adding Challenge Types (2 / 4) gas used::' + strDisplay(receipt.gasUsed))
+  totalGasUsed = totalGasUsed.add(receipt.gasUsed)
+
+  tx = await daoFacet.addChallengeTypes(challengeTypes.slice((challengeTypes.length / 4) * 2, (challengeTypes.length / 4) * 3), { gasLimit: gasLimit })
+  receipt = await tx.wait()
+  if (!receipt.status) {
+    throw Error(`Error:: ${tx.hash}`)
+  }
+  console.log('Adding Challenge Types (3 / 4) gas used::' + strDisplay(receipt.gasUsed))
+  totalGasUsed = totalGasUsed.add(receipt.gasUsed)
+
+  tx = await daoFacet.addChallengeTypes(challengeTypes.slice((challengeTypes.length / 4) * 3), { gasLimit: gasLimit })
+  receipt = await tx.wait()
+  if (!receipt.status) {
+    throw Error(`Error:: ${tx.hash}`)
+  }
+  console.log('Adding Challenge Types (4 / 4) gas used::' + strDisplay(receipt.gasUsed))
+  totalGasUsed = totalGasUsed.add(receipt.gasUsed)
+
+  const challengeTypeTest = await challengesFacet.getChallengeType(0)
+  console.log('challengeTypes: ', challengeTypeTest);
+  
+
+  return {
+    account: account,
+    dathleteDiamond: dathleteDiamond,
+    diamondLoupeFacet: diamondLoupeFacet,
+    prtcleTokenContract: prtcleTokenContract,
+    challengesFacet: challengesFacet,
+    challengesTransferFacet: challengesTransferFacet,
+    dathleteFacet: dathleteFacet,
+    daoFacet: daoFacet,
+    shopFacet: shopFacet,
+    secondAccount: secondAccount
+  }
+}}
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
 if (require.main === module) {
-  deployDiamond()
+  main()
     .then(() => process.exit(0))
-    .catch(error => {
+    .catch((error) => {
       console.error(error)
       process.exit(1)
     })
 }
 
-exports.deployDiamond = deployDiamond
+exports.deployProject = main
+
+// diamond address: 0x7560d1282A3316DE155452Af3ec248d05b8A8044

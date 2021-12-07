@@ -11,7 +11,6 @@ struct ChallengeTypeIO {
 }
 
 library LibChallenges {
-
     function challengeBalancesOfTokenWithTypes(address _tokenContract, uint256 _tokenId)
         internal
         view

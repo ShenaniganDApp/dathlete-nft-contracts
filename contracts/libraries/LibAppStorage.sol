@@ -4,16 +4,27 @@ pragma solidity ^0.8.0;
 import {LibDiamond} from "./LibDiamond.sol";
 
 struct Dathlete {
-    string name;
     address owner;
     bool locked;
-    string cid;
+    uint16 seasonId;
+    uint32 id;
 }
 
 struct ChallengeType {
+    string name;
+    string description;
     uint256 maxQuantity; //Total number that can be minted of this item.
     uint256 totalQuantity; //The total quantity of this item minted so far
+    uint32 id;
+    bool canPurchaseWithPrtcle;
+    uint256 prtclePrice; //How much PRTCLE this item costs
     bool canBeTransferred;
+}
+
+struct Season {
+    uint256 seasonMaxSize; //The max size of the Haunt
+    uint256 dathletePrice;
+    uint24 totalCount;
 }
 
 struct AppStorage {
@@ -22,6 +33,7 @@ struct AppStorage {
     ChallengeType[] challengeTypes;
     // indexes are stored 1 higher so that 0 means no items in items array
     mapping(address => mapping(uint256 => mapping(uint256 => uint256))) nftChallengeIndexes;
+    mapping(uint256 => Season) seasons;
     mapping(address => mapping(uint256 => uint256)) ownerChallengeBalances;
     mapping(address => uint256[]) ownerChallenges;
     // indexes are stored 1 higher so that 0 means no items in items array
@@ -34,10 +46,13 @@ struct AppStorage {
     mapping(address => mapping(address => bool)) operators;
     mapping(uint256 => address) approved;
     uint32 tokenIdCounter;
+    uint16 currentSeasonId;
     string challengesBaseUri;
-    bytes32 domainSeparator;
     string name;
     string symbol;
+    address prtcleContract;
+    address dao;
+    address daoTreasury;
     mapping(address => bool) challengeManagers;
 }
 
@@ -62,6 +77,18 @@ contract Modifiers {
 
     modifier onlyOwner() {
         LibDiamond.enforceIsContractOwner();
+        _;
+    }
+
+    modifier onlyDao() {
+        address sender = msg.sender;
+        require(sender == s.dao, "Only DAO can call this function");
+        _;
+    }
+
+    modifier onlyDaoOrOwner() {
+        address sender = msg.sender;
+        require(sender == s.dao || sender == LibDiamond.contractOwner(), "LibAppStorage: Do not have access");
         _;
     }
 

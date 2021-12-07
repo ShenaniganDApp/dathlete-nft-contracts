@@ -10,7 +10,7 @@ import {LibERC1155} from "../libraries/LibERC1155.sol";
 contract ChallengesFacet is Modifiers {
     //using LibAppStorage for AppStorage;
 
-    event TransferToParent(address indexed _toContract, uint256 indexed _toTokenId, uint256 indexed _tokenTypeId, uint256 _value);
+    event TransferToParent(address indexed _toContract, uint256 _toTokenId, uint256 indexed _tokenTypeId, uint256 _value);
 
     /***********************************|
    |             Read Functions         |
@@ -137,24 +137,34 @@ contract ChallengesFacet is Modifiers {
         }
     }
 
+    ///@notice Query the newest challenge type of a particular challenge
+    ///@return challengeType_ A struct containing details about the challenge type of an challenge with identifier `_challengeId`
+    function getNewestChallengeType() public view returns (ChallengeType memory challengeType_) {
+        challengeType_ = s.challengeTypes[s.challengeTypes.length - 1];
+    }
+
     /**
-        @notice Get the URI for a voucher type
+        @notice Get the URI for a challenge type
         @return URI for token type
     */
     function uri(uint256 _id) external view returns (string memory) {
         require(_id < s.challengeTypes.length, "ChallengesFacet: Challenge _id not found");
-        return LibStrings.strWithUint(s.challengesBaseUri, _id);
+        string memory hexstringtokenID;
+        hexstringtokenID = LibStrings.uint2hexstr(_id);
+
+        return string(abi.encodePacked("ipfs://f0", hexstringtokenID));
     }
 
     /**
-        @notice Set the base url for all voucher types
+        @notice Set the base url for all challenge types
         @param _value The new base url        
     */
     function setBaseURI(string memory _value) external onlyOwner {
-        // require(LibMeta.msgSender() == s.contractOwner, "ChallengesFacet: Must be contract owner");
         s.challengesBaseUri = _value;
         for (uint256 i; i < s.challengeTypes.length; i++) {
-            emit LibERC1155.URI(LibStrings.strWithUint(_value, i), i);
+            string memory hexId = LibStrings.uint2hexstr(i);
+            string memory val = LibStrings.concatenate(_value, hexId);
+            emit LibERC1155.URI(val, hexId);
         }
     }
 }
